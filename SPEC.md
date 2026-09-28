@@ -584,7 +584,7 @@ Endpoint behavior:
   - `room.narrow`: `applyNarrowing` (widening → `NOT_PERMITTED`); push `room` to both members; audit.
   - `pause.set`: persist in settings; broadcast `paused` to all endpoints; audit `pause.changed`.
   - `site.disable`: remove from `sites`, `syncContentScripts`, close rooms, disconnect endpoints of that origin, audit.
-  - `audit.clear`: `AuditLog.clear` (writes `log.cleared{count}` as the new chain's first entry).
+  - `audit.clear`: `AuditLog.clear` (writes `log.cleared{cleared}` as the new chain's first entry).
 - Popup targeting: popup uses the active tab of the current window, or `?tabId=<n>` when opened
   as a page (used by E2E and by "open in window").
 
