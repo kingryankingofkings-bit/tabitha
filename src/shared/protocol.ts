@@ -122,7 +122,8 @@ function base64(x: unknown, what: string, maxBytes: number): string {
 
 function publicKey(x: unknown, what: string): string {
   const s = base64(x, what, 65);
-  if (b64len(s) !== 65 || !s.startsWith('B')) fail(`${what} must be a raw uncompressed P-256 key`); // 0x04 → 'B'
+  // Raw uncompressed P-256 point: 65 bytes, first byte 0x04 (base64 'B' + next char in A–P).
+  if (b64len(s) !== 65 || s[0] !== 'B' || !/^[A-P]$/.test(s[1] ?? '')) fail(`${what} must be a raw uncompressed P-256 key`);
   return s;
 }
 

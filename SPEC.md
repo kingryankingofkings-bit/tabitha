@@ -775,7 +775,35 @@ Nothing else is persisted. No plaintext or ciphertext message bodies are persist
 - `test/e2e/extension.spec.ts` (Playwright, Chromium, `dist/chrome-e2e`): demo pages on two
   origins, pairing via popup pages, bidirectional exchange, file transfer, audit verify.
 
+### 17. Implementation refinements (v1.2; all stricter than v1.1)
+- **Resume tokens rotate** on every successful resume (single use); endpoints keep the token from the latest `welcome`.
+  Endpoint records not resumed within `RESUME_GRACE_MS` are forgotten.
+- **Time checks run at the start of every router event** (expiry, keying timeout, resume grace, pruning), so a frame
+  to a room that just expired gets `ROOM_EXPIRED`.
+- **Sender classification** also rejects page senders whose URL scheme is not http(s) (blob:, data:, about:) or whose
+  URL origin differs from `sender.origin`; UI ports additionally require `sender.origin` (when present) = extension origin.
+- **`confirmed`** is accepted only after the peer's confirm frame was routed to that endpoint, once. `confirm` frames
+  require `room-keys` to have been sent. `key-share` keys must import as a valid P-256 point and differ from the peer's.
+- **`audit-detail{received}`** additionally requires an `accepted` receipt for that frame.
+- **Audit flood cap:** endpoint-triggerable records (`frame.rejected`, `violation`, `pair.requested`,
+  `endpoint.rejected`) are limited to 60/min per source; the next admitted record carries `suppressedBefore: n`.
+- **`pair.start`/`pair.approve` check `TOO_MANY_ROOMS`** for both parties before the code is consumed.
+- **Display text** (agent names, notes, titles, violation messages) is stripped of control/bidi/zero-width chars.
+- **Endpoint grant enforcement** uses the intersection of the latest `RoomView` and the grant bound in the transcript
+  (and the earlier expiry); room updates can narrow but never widen what an endpoint accepts or sends (OSQ-10).
+- **Endpoint violations** `REPLAY`, `DECRYPT_FAILED`, `KEY_CONFIRM_FAILED` close the room locally immediately; inbound
+  `from` must equal the transcript peer (`SPOOFED_SENDER` otherwise), seq 1 must be the confirm frame.
+- **Handshake:** `isolated.js` sends `hs0` only after the router's `welcome` (reduces the OSQ-1 detection signal);
+  it accepts `hs1` from the start. Every AgentRPC method except `connect` requires an attached agent; > 64 in-flight
+  page requests → `RATE_LIMITED`.
+- **Audit persistence** is throttled (first dirty append arms one timer), not a trailing debounce; `verify()` also
+  checks `nextSeq === lastSeq + 1` and a broken chain loaded at `init()` stays reported until `clear()`.
+- **Build validation** fails on inline scripts, remote resources, `web_accessible_resources`, `externally_connectable`,
+  or `host_permissions` outside `chrome-e2e`.
+- `ctSha256` = SHA-256 of the UTF-8 bytes of the base64 `ct` string.
+
 ---
 ### Changelog
 - v1.0 — initial spec.
+- v1.2 — §17: implementation refinements adopted during the build (all tighten behavior); §7 `log.cleared{cleared}`.
 - v1.1 — §13: added `sniffDenied` (executables/archives/shebang always denied) and stricter text control-char rule.

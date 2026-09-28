@@ -31,7 +31,7 @@ try {
     await p.goto(`chrome-extension://${extId}/ui/popup.html?tabId=${await tabIdFor(page)}`);
     return p;
   };
-  const lastLog = async (page, kind) => (await page.locator(`${t('log')}[data-kind="${kind}"]`).first().textContent())?.replace(/^\S+/, '').trim();
+  const lastLog = async (page, kind) => (await page.locator(`${t('log')}[data-kind="${kind}"] > span:last-child`).first().textContent())?.trim();
 
   step(1, `Open two agents on two origins: ${originA} (Planner) and ${originB} (Researcher)`);
   const planner = await context.newPage();

@@ -271,3 +271,61 @@ dedicated security review session.
 - **OSQ-12 Side-panel endpoint identity.** The router recognizes the panel by its
   extension URL. Confirm that no other extension page can impersonate it, and whether
   several panels (one per window) should share a single identity.
+
+### Added during the build (reported by component authors, unverified)
+
+- **OSQ-13 Audit anchor has no keyed MAC.** Anything that can write `storage.local` can
+  recompute the whole chain, or trim the oldest entries and reset the anchor. The chain
+  catches naive edits only. The "sticky" broken-chain flag is kept only in memory, and a
+  malformed store makes the log start over from scratch.
+- **OSQ-14 File-frame size slack at the router.** The router allows up to
+  `maxFileBytes + 4 + FILE_META_MAX` plaintext bytes, so the exact file size is enforced
+  only by the receiving endpoint.
+- **OSQ-15 Pairing-guess counter reset.** A legitimate `pair.start` resets
+  `failuresSinceReset`, so guesses interleaved with real starts get more than 3 tries per
+  code. The global limit of 10 per minute still caps this. The lockout is itself a small
+  pairing DoS, but only extension UI can trigger it.
+- **OSQ-16 Pairing codes are stored in plaintext in `storage.session`** so they survive a
+  worker restart.
+- **OSQ-17 Fixed-window rate limit** allows up to twice the limit across a window boundary.
+  A clock that moves backwards lengthens the window.
+- **OSQ-18 Router persistence fails open.** If writing `storage.session` fails, the error
+  is logged and routing continues on in-memory state. There is also no per-port
+  backpressure: a compromised renderer can flood the op queue.
+- **OSQ-19 Duplicate endpoints per tab.** `injectIntoOpenTabs` and the registered content
+  scripts could both run in the same document, so check that the scripts guard against
+  running twice. For a `{tabId}` selector the router picks the most recently created
+  connected endpoint.
+- **OSQ-20 `ui/sidepanel.html` opened as an ordinary tab** is classified as the panel
+  endpoint. Each window's panel is a separate endpoint (see OSQ-12).
+- **OSQ-21 Handshake port visibility.** The `hs1` port is visible in the page's own
+  `message` events, so any page script can take it and feed fake `bound`/`ready`/event
+  messages to the shim, or race for the port. This is the same trust unit (T12);
+  confirm that it gains nothing more.
+- **OSQ-22 Sequence desync after resume.** If a re-posted, unacked frame whose original
+  was accepted gets an earlier-stage rejection (`PAUSED` or expiry), the sender's counter
+  falls out of step and later sends fail with `REPLAY`. This fails closed, but nothing
+  recovers from it. A confirm frame rejected with `PEER_UNAVAILABLE` is not retried; the
+  room waits out the keying timeout.
+- **OSQ-23 Peer-chosen timestamps.** `sentAt` comes from the peer; it is authenticated
+  but not checked for plausibility.
+- **OSQ-24 Polyglot files and bidi text.** Binary types are validated only by signature,
+  so a GIF/JS or PDF/HTML polyglot passes. That is safe only if consumers keep TabBridge's
+  detected MIME type. Text file *contents* may contain bidi controls or look-alike
+  characters ("Trojan Source"); only file *names* are cleaned. Fullwidth `／` and `＼`
+  are not treated as path separators.
+- **OSQ-25 Main-thread cost.** An 8 MiB JSON file is parsed synchronously and scanned by
+  regex in the renderer. Measure the jank.
+- **OSQ-26 Gesture requirement for opening the side panel.** Chrome may refuse
+  `sidePanel.open` when it is not in the same task as the click. The popup's pop-out
+  window accepts `?tabId=N`: any extension page can target any tab this way (web pages
+  cannot open extension pages, because there are no `web_accessible_resources`).
+  Confirm this.
+- **OSQ-27 Audit export and dashboard show full prompt plaintext**, by design (D0.2).
+  Consider warning about this on export.
+- **OSQ-28 Timers in a suspended worker.** Keying-timeout and resume-grace timers are
+  `setTimeout`s that don't fire while the service worker is suspended. The 1-minute alarm
+  sweep and the checks run on every event bound the delay to about 1 minute.
+- **OSQ-29 Firefox APIs.** `registerContentScripts` with `world: 'MAIN'`,
+  `persistAcrossSessions`, `storage.session` and badge calls were checked only against
+  `@types/chrome`, not in a real Firefox.

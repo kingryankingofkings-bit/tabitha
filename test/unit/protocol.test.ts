@@ -159,3 +159,13 @@ describe('validateE2R / validateR2E', () => {
     expect(code(() => validateProposalShape({ i2j: dg, j2i: { ...dg, maxFileBytes: 1e9 }, ttlMs: 1 }))).toBe('INVALID_MESSAGE');
   });
 });
+
+describe('public key format', () => {
+  it('requires the uncompressed-point prefix byte 0x04', () => {
+    const roomId = id();
+    const ok = Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 1)]).toString('base64');
+    const bad = Buffer.concat([Buffer.from([5]), Buffer.alloc(64, 1)]).toString('base64');
+    expect(validateE2R({ t: 'key-share', v: 1, roomId, publicKey: ok })).toBeTruthy();
+    expect(code(() => validateE2R({ t: 'key-share', v: 1, roomId, publicKey: bad }))).toBe('INVALID_MESSAGE');
+  });
+});
