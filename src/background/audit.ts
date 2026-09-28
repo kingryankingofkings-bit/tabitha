@@ -29,7 +29,7 @@ export const AUDIT_TYPES: readonly AuditType[] = Object.freeze([
   'pair.requested', 'pair.started', 'pair.failed', 'pair.approved', 'pair.cancelled',
   'room.opened', 'room.narrowed', 'room.closed',
   'frame.routed', 'frame.rejected', 'frame.receipt',
-  'content.sent', 'content.received', 'violation', 'log.cleared',
+  'content.sent', 'content.received', 'content.mismatch', 'violation', 'log.cleared',
 ] as AuditType[]);
 
 const ACTOR_KINDS: readonly AuditActor['kind'][] = ['router', 'endpoint', 'ui'];

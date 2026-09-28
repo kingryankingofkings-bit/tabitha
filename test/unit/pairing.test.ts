@@ -124,7 +124,7 @@ describe('lookup / approve', () => {
     expect(prev).toEqual({
       code: rec.code,
       initiator: { origin: 'https://a.test', kind: 'page' },
-      joiner: { origin: 'https://b.test', kind: 'panel' },
+      joiner: { origin: 'https://b.test', kind: 'panel', endpointId: b.endpointId },
       proposal: defaultProposal(),
       expiresAt: rec.expiresAt,
     });

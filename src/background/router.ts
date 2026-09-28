@@ -1149,8 +1149,18 @@ export class Router {
       else ok = rf.to === rec.endpointId && !rf.recvDetail && rf.receipt === 'accepted';
     }
     if (!ok || !room || !rf) return this.sendError(conn, 'INVALID_MESSAGE', 'Unexpected audit-detail');
-    if (m.direction === 'sent') rf.sentDetail = true;
-    else rf.recvDetail = true;
+    // Content records are endpoint attestations. The router cannot decrypt, but the sender and the
+    // receiver each report detail.sha256 over the same plaintext, so an honest exchange yields equal
+    // hashes; a divergence proves one side misreported (SECURITY_REVIEW M2). Record both and flag it.
+    const sha = m.detail.sha256;
+    const other = m.direction === 'sent' ? rf.recvSha : rf.sentSha;
+    if (m.direction === 'sent') {
+      rf.sentDetail = true;
+      rf.sentSha = sha;
+    } else {
+      rf.recvDetail = true;
+      rf.recvSha = sha;
+    }
     this.mark();
     this.audit({
       type: m.direction === 'sent' ? 'content.sent' : 'content.received',
@@ -1158,6 +1168,14 @@ export class Router {
       actor: this.actorOf(rec),
       data: { frameId: m.frameId, detail: m.detail },
     });
+    if (other !== undefined && other !== sha) {
+      this.audit({
+        type: 'content.mismatch',
+        roomId: room.roomId,
+        actor: { kind: 'router' },
+        data: { frameId: m.frameId, kind: rf.kind, sentSha: rf.sentSha, recvSha: rf.recvSha },
+      });
+    }
   }
 
   private onViolation(conn: EndpointConn, rec: EndpointRecord, m: Extract<E2R, { t: 'violation' }>): void {

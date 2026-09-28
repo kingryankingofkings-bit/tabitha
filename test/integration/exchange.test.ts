@@ -144,7 +144,8 @@ async function makeWorld(p = proposal()): Promise<World> {
   const preview = await router.handleUi('pair.lookup', { code, endpoint: { tabId: 22 } });
   expect(preview.initiator.origin).toBe(A);
   expect(preview.joiner.origin).toBe(B);
-  const { roomId } = await router.handleUi('pair.approve', { code, endpoint: { tabId: 22 } });
+  // Approval is pinned to the reviewed joiner endpoint, not the tab (SECURITY_REVIEW M1).
+  const { roomId } = await router.handleUi('pair.approve', { code, endpoint: { endpointId: preview.joiner.endpointId } });
   await waitFor(() => a.rooms().some((r) => r.roomId === roomId && r.state === 'active') && b.rooms().some((r) => r.state === 'active'));
   return { router, audit, now, a, b, sa, sb, roomId, serverPorts };
 }
@@ -304,6 +305,8 @@ describe('integration: pairing → conversation → files → revocation', () =>
       expect(types, t).toContain(t);
     const received = entries.find((e) => e.type === 'content.received' && (e.data as { detail?: { text?: string } }).detail?.text === 'audit me');
     expect(received?.actor.origin).toBe(B);
+    // Honest endpoints report equal content hashes, so the cross-check must not false-positive.
+    expect(types.has('content.mismatch')).toBe(false);
     const exported = JSON.stringify(await w.router.handleUi('audit.export', undefined));
     const codes = [...exported.matchAll(/"code":"(\d{6})"/g)];
     expect(codes).toHaveLength(0);

@@ -192,7 +192,8 @@ export class PairingManager {
     return {
       code: rec.code,
       initiator: { origin: rec.initiator.origin, kind: rec.initiator.kind },
-      joiner: { origin: j.origin, kind: j.kind },
+      // endpointId pins approval to the exact endpoint the user reviewed (SECURITY_REVIEW M1).
+      joiner: { origin: j.origin, kind: j.kind, endpointId: j.endpointId },
       proposal: copyProposal(rec.proposal),
       expiresAt: rec.expiresAt,
     };

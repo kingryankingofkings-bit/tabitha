@@ -228,7 +228,8 @@ export interface PairingEndpointRef { endpointId: EndpointId; kind: EndpointKind
 export interface PairingRecord { code: string; initiator: PairingEndpointRef; proposal: GrantProposal; createdAt: number; expiresAt: number; }
 export interface PairingSnapshot { pairings: PairingRecord[]; failures: number[]; failuresSinceReset: number; lockedUntil: number; }
 export interface PairingPreview {
-  code: string; initiator: { origin: string; kind: EndpointKind }; joiner: { origin: string; kind: EndpointKind };
+  code: string; initiator: { origin: string; kind: EndpointKind };
+  joiner: { origin: string; kind: EndpointKind; endpointId: EndpointId }; // endpointId of the reviewed joiner
   proposal: GrantProposal; expiresAt: number;
 }
 
@@ -238,7 +239,7 @@ export type AuditType =
   | 'pair.requested' | 'pair.started' | 'pair.failed' | 'pair.approved' | 'pair.cancelled'
   | 'room.opened' | 'room.narrowed' | 'room.closed'
   | 'frame.routed' | 'frame.rejected' | 'frame.receipt'
-  | 'content.sent' | 'content.received' | 'violation' | 'log.cleared';
+  | 'content.sent' | 'content.received' | 'content.mismatch' | 'violation' | 'log.cleared';
 export interface AuditActor { kind: 'router' | 'endpoint' | 'ui'; endpointId?: EndpointId; origin?: string; }
 export interface AuditEntry {
   seq: number; ts: number; type: AuditType; roomId?: RoomId; actor: AuditActor;
@@ -327,7 +328,7 @@ Validated by `validateE2R`/`validateR2E` (`src/shared/protocol.ts`). Per-message
 | `confirmed` | Only in `keying` after `room-keys`. Both confirmed → `active`. |
 | `frame` | §5.3 |
 | `receipt` | Sender must be the recipient of a routed `frameId` in that room; forwarded to the frame's sender; audit `frame.receipt`. |
-| `audit-detail` | Accepted once per (frameId, direction): `sent` only from the frame's sender after routing; `received` only from its recipient. `detail.kind` must equal the routed kind. Audit `content.sent` / `content.received` with actor from port. |
+| `audit-detail` | Accepted once per (frameId, direction): `sent` only from the frame's sender after routing; `received` only from its recipient (and only after an `accepted` receipt). `detail.kind` must equal the routed kind. Audit `content.sent` / `content.received` with actor from port. The router records `detail.sha256` on the routed frame; when both directions have reported and their `sha256` differ, the router additionally writes a `content.mismatch` record (actor `router`) — content records are endpoint attestations, and a divergence proves one side misreported what it sent or received. |
 | `violation` | Audit `violation`. If `code ∈ {DECRYPT_FAILED, KEY_CONFIRM_FAILED, REPLAY}` → close room (`violation` / `key-confirm-failed`). |
 | `leave` | Member closes room (`peer-left` shown to the other side). |
 
@@ -417,7 +418,7 @@ export class Router {
     routed: Record<FrameId, RoutedFrame>;                                      // ≤ 256 most recent
     counters: { routed: number; rejected: number }; closedReason?: CloseReason; closedAt?: number;
   }
-  interface RoutedFrame { from: EndpointId; to: EndpointId; kind: FrameKind; at: number; sentDetail: boolean; recvDetail: boolean; receipt?: ReceiptStatus; }
+  interface RoutedFrame { from: EndpointId; to: EndpointId; kind: FrameKind; at: number; sentDetail: boolean; recvDetail: boolean; sentSha?: string; recvSha?: string; receipt?: ReceiptStatus; }
   interface RouterState { v: 1; endpoints: Record<EndpointId, EndpointRecord>; rooms: Record<RoomId, RoomRecord>;
     pairing: PairingSnapshot; pairRequests: UiState['pairRequests']; pendingSites: string[]; }
   export class RouterStateStore { constructor(kv: KeyValueStore); load(): Promise<RouterState>; save(s: RouterState): Promise<void>; }
@@ -578,9 +579,15 @@ Endpoint behavior:
   - `pair.start`: rejects `PAUSED`; resolves selector to a **connected** endpoint (tabId → page
     endpoint of that tab; endpointId → must exist and be connected) else `PEER_UNAVAILABLE`;
     `validateProposal`; clears pair request for that tab; audit `pair.started{initiator, proposal}` (no code in audit).
+  - `pair.lookup`: returns `PairingPreview`, including the reviewed joiner's `endpointId`. The trusted
+    UI MUST call `pair.approve` with `endpoint: { endpointId }` from that preview, never a `{ tabId }`
+    selector, so approval is bound to the exact endpoint (and therefore origin) the user reviewed. If
+    the joiner tab navigated to another (even enabled) origin after the review, that endpoint has
+    disconnected and approve fails `PEER_UNAVAILABLE` instead of silently binding the new origin.
   - `pair.lookup`/`pair.approve`: `PairingManager` errors pass through; audit `pair.failed{reason}`
     on failure; approve → create room (`keying`), audit `pair.approved{roomId, initiator, joiner, grant}`,
-    send `key-request` to both.
+    send `key-request` to both. The initiator is re-verified against the pairing record (endpointId +
+    origin + kind + live); the joiner is re-verified the same way via the preview's `endpointId`.
   - `room.narrow`: `applyNarrowing` (widening → `NOT_PERMITTED`); push `room` to both members; audit.
   - `pause.set`: persist in settings; broadcast `paused` to all endpoints; audit `pause.changed`.
   - `site.disable`: remove from `sites`, `syncContentScripts`, close rooms, disconnect endpoints of that origin, audit.
@@ -805,5 +812,6 @@ Nothing else is persisted. No plaintext or ciphertext message bodies are persist
 ---
 ### Changelog
 - v1.0 — initial spec.
+- v1.3 — §3/§7: `PairingPreview.joiner.endpointId`; approval pinned to the reviewed joiner endpoint (fixes SECURITY_REVIEW M1). `content.mismatch` audit record + `RoutedFrame.sentSha/recvSha`: the router cross-checks the two endpoints' content attestations (fixes SECURITY_REVIEW M2, fidelity).
 - v1.2 — §17: implementation refinements adopted during the build (all tighten behavior); §7 `log.cleared{cleared}`.
 - v1.1 — §13: added `sniffDenied` (executables/archives/shebang always denied) and stricter text control-char rule.

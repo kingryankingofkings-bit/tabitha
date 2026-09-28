@@ -123,7 +123,8 @@ export interface PairingEndpointRef { endpointId: EndpointId; kind: EndpointKind
 export interface PairingRecord { code: string; initiator: PairingEndpointRef; proposal: GrantProposal; createdAt: number; expiresAt: number; }
 export interface PairingSnapshot { pairings: PairingRecord[]; failures: number[]; failuresSinceReset: number; lockedUntil: number; }
 export interface PairingPreview {
-  code: string; initiator: { origin: string; kind: EndpointKind }; joiner: { origin: string; kind: EndpointKind };
+  code: string; initiator: { origin: string; kind: EndpointKind };
+  joiner: { origin: string; kind: EndpointKind; endpointId: EndpointId };
   proposal: GrantProposal; expiresAt: number;
 }
 
@@ -133,7 +134,7 @@ export type AuditType =
   | 'pair.requested' | 'pair.started' | 'pair.failed' | 'pair.approved' | 'pair.cancelled'
   | 'room.opened' | 'room.narrowed' | 'room.closed'
   | 'frame.routed' | 'frame.rejected' | 'frame.receipt'
-  | 'content.sent' | 'content.received' | 'violation' | 'log.cleared';
+  | 'content.sent' | 'content.received' | 'content.mismatch' | 'violation' | 'log.cleared';
 export interface AuditActor { kind: 'router' | 'endpoint' | 'ui'; endpointId?: EndpointId; origin?: string; }
 export interface AuditEntry {
   seq: number; ts: number; type: AuditType; roomId?: RoomId; actor: AuditActor;
@@ -216,7 +217,7 @@ export interface EndpointRecord {
 }
 export interface RoutedFrame {
   from: EndpointId; to: EndpointId; kind: FrameKind; at: number;
-  sentDetail: boolean; recvDetail: boolean; receipt?: ReceiptStatus;
+  sentDetail: boolean; recvDetail: boolean; sentSha?: string; recvSha?: string; receipt?: ReceiptStatus;
 }
 export interface RoomRecord {
   roomId: RoomId; state: RoomState; createdAt: number; members: [RoomMember, RoomMember]; grant: Grant;

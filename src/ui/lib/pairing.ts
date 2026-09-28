@@ -172,6 +172,10 @@ export function pairingSection(o: PairingSectionOptions): PairingSection {
   const preview = h('div', { hidden: true });
   const joinNote = h('p', { class: 'small', role: 'status' });
   let previewCode: string | null = null;
+  // The exact endpoint the user reviewed. Approval is pinned to it (SECURITY_REVIEW M1), so if the
+  // joiner tab navigated to a different origin after review, this endpoint is gone and approve fails
+  // cleanly rather than binding an origin the user never saw.
+  let previewJoinerId: string | null = null;
 
   joinForm.addEventListener('submit', (ev) => {
     ev.preventDefault();
@@ -200,12 +204,14 @@ export function pairingSection(o: PairingSectionOptions): PairingSection {
 
   function hidePreview(): void {
     previewCode = null;
+    previewJoinerId = null;
     preview.replaceChildren();
     show(preview, false);
   }
 
   function renderPreview(p: PairingPreview): void {
     previewCode = p.code;
+    previewJoinerId = p.joiner.endpointId;
     const heading = h('h3', { tabindex: '-1' }, 'Review before approving');
     const reject = h('button', { type: 'button', class: 'btn btn--deny-ghost', 'data-testid': 'join-reject' }, 'Reject');
     const approve = h('button', { type: 'button', class: 'btn btn--approve', 'data-testid': 'join-approve' }, 'Approve & open room');
@@ -265,12 +271,13 @@ export function pairingSection(o: PairingSectionOptions): PairingSection {
     });
     approve.addEventListener('click', () => {
       const code = previewCode;
-      const sel = o.selector();
-      if (!code || !sel) return;
+      const joinerId = previewJoinerId;
+      if (!code || !joinerId) return;
       reject.disabled = true;
       approve.disabled = true;
       o.clearError();
-      o.client.call('pair.approve', { code, endpoint: sel }).then(
+      // Pin to the reviewed endpoint, not the tab: never bind an origin the user did not see.
+      o.client.call('pair.approve', { code, endpoint: { endpointId: joinerId } }).then(
         (r) => {
           hidePreview();
           codeInput.value = '';

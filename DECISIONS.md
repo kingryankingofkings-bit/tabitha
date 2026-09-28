@@ -329,3 +329,35 @@ dedicated security review session.
 - **OSQ-29 Firefox APIs.** `registerContentScripts` with `world: 'MAIN'`,
   `persistAcrossSessions`, `storage.session` and badge calls were checked only against
   `@types/chrome`, not in a real Firefox.
+
+---
+
+## Post-review remediation (SECURITY_REVIEW.md M1, M2, L1)
+
+After the dedicated security review, two findings were fixed and one doc claim corrected.
+See `SECURITY_REVIEW.md` for the full analysis and `test/integration/security-fixes.test.ts`
+for the regression coverage.
+
+- **M1 — approval is now pinned to the reviewed endpoint.** `pair.lookup` returns the
+  reviewed joiner's `endpointId`, and the pairing UI approves with
+  `endpoint: { endpointId }`. An `endpointId` names one immutable `(origin, kind)`
+  endpoint, so if the joiner tab navigates to another origin after review, the reviewed
+  endpoint is gone and approval fails `PEER_UNAVAILABLE` instead of binding the new origin.
+  The stricter guarantee — *you approve the pairing and its origins* — now holds.
+- **M2 — content attestations are cross-checked.** The audit log's content is, by the
+  nature of end-to-end encryption, reported by the endpoints (the router cannot decrypt).
+  The router now records each side's `detail.sha256` and writes a `content.mismatch` record
+  when the sender's and receiver's hashes for the same frame disagree, so a forged
+  `content.sent` is caught by the honest peer's `content.received` (and vice-versa). The
+  **metadata** record (`frame.routed`: who, kind, size, `ctSha256`, when) is always written
+  and is the authoritative record. The residual — a hostile endpoint can still **withhold**
+  its own content attestation — cannot be forced under E2E and is stated as a limitation
+  here and in the README.
+- **L1 — documentation.** The audit log is described as "tamper-evident against in-page and
+  cross-tab tampering; not tamper-proof against code with extension-storage or local-disk
+  access" (the chain is unkeyed by necessity — any key would be readable by the same
+  attacker).
+
+### Still open (unchanged by this remediation)
+L2–L6 and the informational items in SECURITY_REVIEW.md, and OSQ-2/29 (Firefox behavior,
+still unverified without a real Firefox run).

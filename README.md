@@ -6,7 +6,8 @@ TabBridge is a Manifest V3 extension for Chromium and Firefox. It lets tabs form
 **rooms** so that AI agents (in-page agents, or you through the side-panel Agent Console) can hold
 a real back-and-forth conversation across tabs: prompts, responses, task state and files. Before
 anything crosses between tabs, **you** have to approve the pairing and its per-direction
-permissions. Every exchange is written to a tamper-evident audit log.
+permissions. Every exchange is written to an audit log that is tamper-evident against in-page and
+cross-tab tampering.
 
 > Status: MVP (v0.1.0). A dedicated security review is still pending; see
 > [DECISIONS.md → OPEN SECURITY QUESTIONS](DECISIONS.md#open-security-questions).
@@ -71,7 +72,7 @@ always happens in extension UI.
 | **Encrypted transport** | End-to-end between the two endpoints: ECDH P-256 → HKDF-SHA-256 (bound to a transcript of both keys, both origins and the grant) → AES-256-GCM, with the frame header authenticated as AAD. The router forwards ciphertext only. |
 | **Policy enforcement** | Router checks: membership, per-direction kind/MIME permissions, size caps (text 32 KiB, files up to 8 MiB), rate limits, strict sequence numbers (replay protection), expiry, and the global pause. |
 | **File safety** | Allowlist checked by magic bytes (txt, md, csv, json, png, jpeg, gif, webp, pdf). HTML, SVG, scripts, executables and archives are always refused. File names are sanitized. Validation runs on the sender *and again* on the receiver, which also checks the SHA-256. Provenance is attached to every file. |
-| **Audit** | A hash-chained log of every pairing, room event, routed or rejected frame, and content record (full prompt text, and file name, type, size and SHA-256, never file bytes). You can verify, export and clear it from the dashboard. |
+| **Audit** | A hash-chained log of every pairing, room event, and routed or rejected frame. The routing record (who, kind, size, ciphertext hash, when) is always written and is the authoritative record. Content records (full prompt text; file name, type, size and SHA-256, never file bytes) are attested by the two endpoints and cross-checked — a disagreement is logged as `content.mismatch` — but a hostile endpoint can still withhold *its own* content attestation. You can verify, export and clear the log from the dashboard. The chain is tamper-evident against in-page and cross-tab tampering; it is not tamper-proof against code with extension-storage or local-disk access. |
 
 **Limits, stated plainly:**
 - TabBridge does **not** scan file contents; a valid PDF or image can still be malicious.

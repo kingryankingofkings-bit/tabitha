@@ -5,7 +5,13 @@ Commit reviewed: `84b1f8d` (branch `claude/tabbridge-extension-mvp-lmsx1a`)
 Scope: whole extension (`src/**`), build (`scripts/build.mjs`), manifests, docs.
 Method: read every module against SPEC/DECISIONS/README, then verified behavior
 against the implementation (one finding confirmed with a Router-level probe, since
-removed). No fixes were applied.
+removed).
+
+> **Remediation status (follow-up, commit `HEAD`):** at the user's direction, **M1 and
+> M2 have been fixed** and covered by regression tests
+> (`test/integration/security-fixes.test.ts`); **L1**'s doc wording was corrected. The
+> findings below are kept as the record of what was found; each carries a **Resolution**
+> note. All other findings (L2–L6, informational) are left for the team to schedule.
 
 ## Summary
 
@@ -53,9 +59,9 @@ a user approving a pairing.
 
 | ID | Severity | Title |
 |----|----------|-------|
-| M1 | Medium | Pairing approval binds to the joiner tab, not the reviewed endpoint/origin (consent TOCTOU) |
-| M2 | Medium | Audit content records are endpoint-self-reported and optional (completeness/fidelity vs. the "full audit" claim) |
-| L1 | Low | Audit hash chain is unkeyed; README calls it "tamper-evident" without the caveat |
+| M1 | Medium — **FIXED** | Pairing approval binds to the joiner tab, not the reviewed endpoint/origin (consent TOCTOU) |
+| M2 | Medium — **FIXED** (fidelity) / documented (completeness) | Audit content records are endpoint-self-reported and optional |
+| L1 | Low — **FIXED** (docs) | Audit hash chain is unkeyed; README called it "tamper-evident" without the caveat |
 | L2 | Low | Pairing global lockout is a self-inflicted denial-of-service; failure counter resets on legitimate `start` |
 | L3 | Low | Fixed-window rate limit permits a 2× burst across window edges |
 | L4 | Low | Large-frame parsing cost in the service worker (memory/CPU spike) |
@@ -118,6 +124,15 @@ match the previewed values (mirroring the initiator re-check at `router.ts:1537`
 with `PEER_UNAVAILABLE`/`PAIRING_EXPIRED` if the tab now hosts a different endpoint. The UI
 already reviews per lookup, so this is a router-side tightening.
 
+**Resolution — FIXED.** `PairingPreview.joiner` now carries the reviewed endpoint's
+`endpointId` (`src/shared/types.ts`, `src/background/pairing.ts`), and the pairing UI calls
+`pair.approve` with `endpoint: { endpointId }` from that preview
+(`src/ui/lib/pairing.ts`). Because an `endpointId` names one immutable `(origin, kind)`
+endpoint, a navigation replaces it with a *new* endpoint id; approving the reviewed id then
+resolves to a disconnected endpoint and fails `PEER_UNAVAILABLE` rather than binding the new
+origin. Verified by `test/integration/security-fixes.test.ts` (the M1 probe now asserts the
+room is *not* opened and no substitute origin is bound). SPEC §3/§7 updated (v1.3).
+
 ### M2. Audit content records are endpoint-self-reported and optional
 
 **Files:** `src/background/router.ts:1143` (`onAuditDetail`), `router.ts:1287`–`1299`
@@ -159,6 +174,21 @@ emit a `content.missing` marker after a timeout, since it knows a frame was rout
 fidelity depends on endpoint integrity, while `frame.routed` (kind/size/`ctSha256`) is the
 authoritative record.
 
+**Resolution — FIXED (fidelity); documented (completeness).** The router now records each
+side's `detail.sha256` on the routed frame and, when the sender's and receiver's reported
+hashes for the same frame differ, writes a `content.mismatch` record with actor `router`
+(`src/background/router.ts` `onAuditDetail`; `RoutedFrame.sentSha/recvSha` and the
+`content.mismatch` audit type added to `src/shared/types.ts` and `src/background/audit.ts`).
+Since the two sides hash the *same* plaintext, an honest exchange yields equal hashes and a
+forged `content.sent` is caught the moment the honest peer's `content.received` lands (and
+vice-versa). Verified by `test/integration/security-fixes.test.ts` (mismatch logged on
+divergent hashes; no false positive on matching hashes; the honest end-to-end test asserts
+`content.mismatch` is absent). The **completeness** half — a hostile endpoint can still
+*withhold* its own `content.*` attestation — cannot be forced under E2E; this is now stated
+plainly in the README and DECISIONS, alongside the fact that `frame.routed`
+(who/kind/size/`ctSha256`/when) is always written and is the authoritative record. SPEC
+§4/§12 updated (v1.3).
+
 ---
 
 ## Low
@@ -182,6 +212,12 @@ scripts have no `chrome.storage` access, and `storage.session` stays `TRUSTED_CO
 tampering; not tamper-proof against code with local disk/extension-storage access." (No
 keyed MAC is possible without a key the same attacker could read; if stronger evidence is
 wanted, chain-anchor to an external append-only sink — out of MVP scope.)
+
+**Resolution — FIXED (docs).** The README's audit description now states it is
+"tamper-evident against in-page and cross-tab tampering; not tamper-proof against code with
+extension-storage or local disk access," and notes that content records are endpoint
+attestations (cross-checked, see M2) while `frame.routed` metadata is the authoritative,
+always-written record.
 
 ### L2. Pairing lockout is a self-inflicted DoS; failure counter resets on legitimate `start`
 
@@ -382,3 +418,12 @@ address **M2** (mark self-reported content and/or flag missing `content.received
 correct the **L1** README wording. Everything else is Low/Informational and can be
 scheduled. Encryption, origin isolation, input validation, file safety and the no-self-pair
 guarantee are solid.
+
+**Post-remediation (commit `HEAD`).** M1, M2 (fidelity) and L1 have been fixed and
+regression-tested, so the stricter claim now holds: approval is bound to the exact endpoint
+(and origin) the user reviewed, and divergent content attestations are flagged in the log.
+The one residual, documented rather than "fixed," is that a hostile endpoint can still
+withhold *its own* content attestation under end-to-end encryption — the router cannot force
+it — but the metadata record (`frame.routed`) is always written and authoritative, and any
+peer disagreement is now caught. L2–L6 and the informational items remain open for
+scheduling.
