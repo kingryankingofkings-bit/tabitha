@@ -252,10 +252,10 @@ dedicated security review session.
 - **OSQ-6 Base64 and JSON parsing cost.** A near-8 MiB frame is parsed in the service
   worker and the receiver. Check memory spikes and whether a burst within the rate limit
   can exhaust the worker's memory.
-- **OSQ-7 Integrity of `resumeToken` and `endpointId`.** Tokens are compared in constant
-  time? Needs checking. Tokens live in isolated-world memory, and whether a compromised
-  renderer could steal another tab's token needs review (it shouldn't be possible, since
-  tokens are per tab and the tab is also checked).
+- **OSQ-7 `resumeToken` handling.** The router stores only a SHA-256 of each token and
+  compares it in constant time, and a resume must also match the tab ID, origin and kind.
+  Still to verify: whether a compromised renderer holding one tab's token can do anything
+  beyond resuming that same tab's endpoint.
 - **OSQ-8 Page scripts can observe `tabbridge:ready` and handshake timing.** Minor
   fingerprinting, on enabled origins only.
 - **OSQ-9 PDF and image payloads.** They pass validation but may carry exploits. Receivers
