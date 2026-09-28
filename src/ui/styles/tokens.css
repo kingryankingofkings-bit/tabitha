@@ -1,0 +1,133 @@
+/* TabBridge design tokens: "Customs House". DESIGN.md is authoritative; keep 1:1. */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- Color: day shift ---- */
+  --c-paper: #F4EFE3;
+  --c-paper-raised: #FBF8F0;
+  --c-paper-sunk: #EAE3D2;
+  --c-ink: #1C1A17;
+  --c-ink-muted: #595347;
+  --c-ink-faint: #857D6E;
+  --c-rule: #D8CFBC;
+  --c-on-ink: #FBF8F0;
+  --c-deny: #A8231B;
+  --c-deny-tint: #F5DCD5;
+  --c-ok: #2B6636;
+  --c-ok-tint: #DDE9D7;
+  --c-info: #1D4C8A;
+  --c-info-tint: #DAE4F1;
+  --c-warn: #855500;
+  --c-warn-tint: #F2E3C4;
+  --c-focus: #1446A0;
+  --c-scrim: rgb(28 26 23 / .45);
+
+  /* ---- Typography ---- */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 13px;
+  --fs-md: 15px;
+  --fs-lg: 18px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
+  --fs-code: 40px;
+
+  --lh-2xs: 1.3;
+  --lh-xs: 1.35;
+  --lh-sm: 1.4;
+  --lh-base: 1.5;
+  --lh-md: 1.45;
+  --lh-lg: 1.3;
+  --lh-xl: 1.25;
+  --lh-2xl: 1.2;
+  --lh-code: 1;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+
+  --ls-label: .08em;
+  --ls-stamp: .14em;
+
+  /* ---- Spacing ---- */
+  --sp-0: 2px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --ledger: 28px;
+
+  /* ---- Radii ---- */
+  --r-0: 0;
+  --r-1: 2px;
+  --r-2: 4px;
+  --r-stamp: 3px;
+  --r-pill: 999px;
+
+  /* ---- Borders ---- */
+  --bw-hair: 1px;
+  --bw-strong: 2px;
+  --bw-stamp: 3px;
+  --bw-bar: 4px;
+  --focus-width: 3px;
+  --focus-offset: 2px;
+
+  /* ---- Shadows ---- */
+  --sh-card: 0 1px 0 var(--c-rule), 0 2px 6px rgb(28 26 23 / .06);
+  --sh-lift: 0 6px 24px rgb(28 26 23 / .14);
+
+  /* ---- Motion ---- */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-stamp: 260ms;
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
+  --ease-stamp: cubic-bezier(.2, .9, .3, 1.35);
+
+  /* ---- Layout ---- */
+  --popup-width: 380px;
+  --content-max: 1180px;
+}
+
+/* ---- Color: night shift ---- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-paper: #0E1829;
+    --c-paper-raised: #15233A;
+    --c-paper-sunk: #0A1220;
+    --c-ink: #ECE5D3;
+    --c-ink-muted: #B4AB97;
+    --c-ink-faint: #7C8599;
+    --c-rule: #26364F;
+    --c-on-ink: #0E1829;
+    --c-deny: #FF8F80;
+    --c-deny-tint: #3A1C22;
+    --c-ok: #86D694;
+    --c-ok-tint: #15321F;
+    --c-info: #95BEFF;
+    --c-info-tint: #162C4C;
+    --c-warn: #F2C063;
+    --c-warn-tint: #372B12;
+    --c-focus: #FFD166;
+    --c-scrim: rgb(0 0 0 / .6);
+
+    --sh-card: 0 1px 0 rgb(0 0 0 / .4), 0 2px 8px rgb(0 0 0 / .35);
+    --sh-lift: 0 8px 28px rgb(0 0 0 / .55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-stamp: 0ms;
+  }
+}
