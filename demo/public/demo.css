@@ -1,0 +1,10 @@
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; line-height: 1.45; }
+h1 small { font-weight: 400; font-size: 0.55em; opacity: 0.7; }
+section { border: 1px solid #8884; border-radius: 8px; padding: 0.75rem 1rem; margin: 1rem 0; }
+.row { margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+button { padding: 0.35rem 0.7rem; }
+li[data-testid="log"] { font-family: ui-monospace, monospace; font-size: 0.85rem; margin: 0.2rem 0; }
+.tag { display: inline-block; min-width: 7.5rem; font-weight: 600; }
+li[data-kind="error"] .tag { color: #c0392b; }
+li[data-kind="answer"] .tag, li[data-kind="file-in"] .tag { color: #1e8449; }

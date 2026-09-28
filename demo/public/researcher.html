@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TabBridge demo — Researcher agent</title>
+  <link rel="stylesheet" href="./demo.css">
+</head>
+<body data-role="researcher">
+  <header>
+    <h1>Researcher agent <small>TabBridge demo</small></h1>
+    <p>TabBridge status: <strong data-testid="tb-status">waiting…</strong></p>
+  </header>
+  <section>
+    <h2>Rooms</h2>
+    <ul data-testid="rooms"></ul>
+    <button data-testid="request-pairing">Ask the user to pair this tab</button>
+  </section>
+  <section>
+    <h2>Talk to the other agent</h2>
+    <input data-testid="question" placeholder="Question for the other agent" size="50">
+    <button data-testid="ask" data-needs-room disabled>Ask (await reply)</button>
+    <div class="row">
+      <button data-testid="send-png" data-needs-room disabled>Send sample PNG</button>
+      <button data-testid="send-disguised" data-needs-room disabled>Send HTML disguised as .png</button>
+      <input type="file" data-testid="file-input">
+      <button data-testid="send-picked" data-needs-room disabled>Send picked file</button>
+    </div>
+  </section>
+  <section>
+    <h2>Log</h2>
+    <ol data-testid="log-list" reversed></ol>
+  </section>
+  <script src="./agent.js"></script>
+</body>
+</html>
