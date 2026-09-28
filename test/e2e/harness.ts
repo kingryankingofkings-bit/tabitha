@@ -25,8 +25,7 @@ export async function launch(): Promise<Harness> {
     headless: true,
     args: [`--disable-extensions-except=${extPath}`, `--load-extension=${extPath}`],
   });
-  let sw = context.serviceWorkers()[0];
-  if (!sw) sw = await context.waitForEvent('serviceworker');
+  const sw: Worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const extId = new URL(sw.url()).host;
 
   async function tabIdFor(page: Page): Promise<number> {
