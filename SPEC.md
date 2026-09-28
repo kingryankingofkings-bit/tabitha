@@ -700,6 +700,7 @@ export const EXTENSIONS: Record<AllowedMime, readonly string[]> = {
   'text/plain':['txt'], 'text/markdown':['md','markdown'], 'text/csv':['csv'], 'application/json':['json'],
   'image/png':['png'], 'image/jpeg':['jpg','jpeg'], 'image/gif':['gif'], 'image/webp':['webp'], 'application/pdf':['pdf'] };
 export function sniffBinary(bytes: Uint8Array): AllowedMime | null;   // png/jpeg/gif/webp/pdf magic
+export function sniffDenied(bytes: Uint8Array): string | null;        // known-dangerous signatures → label: PE 'MZ', ELF '\x7fELF', Mach-O (FEEDFACE/FEEDFACF/CAFEBABE, both endians), ZIP 'PK\x03\x04'/'PK\x05\x06', gzip 1F8B, 7z, RAR 'Rar!', wasm '\0asm', shebang '#!'
 export function looksLikeActiveContent(text: string): boolean;         // leading (after BOM/whitespace, case-insens.) '<!doctype','<html','<script','<svg','<?xml','<iframe','<object','<embed' OR contains '<script' anywhere in the first 4 KiB
 export type NameResult = { ok: true; name: string; ext: string } | { ok: false; code: 'FILE_NAME_INVALID'; detail: string };
 export function sanitizeFileName(name: string): NameResult;
@@ -711,10 +712,12 @@ export async function validateFile(input: { name: string; bytes: Uint8Array; dec
 export function buildProvenance(a: { from: PeerRef; roomId: RoomId; frameId: FrameId; sha256: string; mime: AllowedMime; size: number; sentAt: number; receivedAt: number }): Provenance;
 ```
 `validateFile` order: empty → `FILE_EMPTY`; `> maxBytes` or `> HARD_MAX_FILE_BYTES` →
-`FILE_TOO_LARGE`; `sanitizeFileName`; ext → expected MIME (unknown ext → `FILE_TYPE_DENIED`);
+`FILE_TOO_LARGE`; `sanitizeFileName`; `sniffDenied` hit → `FILE_TYPE_DENIED` (regardless of name);
+ext → expected MIME (unknown ext → `FILE_TYPE_DENIED`);
 binary sniff: if a binary signature matches, it must equal the ext's MIME (else
 `FILE_TYPE_MISMATCH`); if ext is binary type but no signature → `FILE_TYPE_MISMATCH`; text types:
-must decode as fatal UTF-8 (BOM allowed), no `\u0000` → else `FILE_TYPE_MISMATCH`;
+must decode as fatal UTF-8 (BOM allowed) and contain no C0 control chars other than TAB, LF, CR, FF
+(nor U+007F) → else `FILE_TYPE_MISMATCH`;
 `looksLikeActiveContent` → `FILE_TYPE_DENIED`; JSON must `JSON.parse` → else `FILE_TYPE_MISMATCH`;
 `declaredMime` (if given, ignoring params) must equal detected → else `FILE_TYPE_MISMATCH`;
 detected ∉ `policy.allowed` → `FILE_TYPE_DENIED`. `sha256` over the bytes.
@@ -775,3 +778,4 @@ Nothing else is persisted. No plaintext or ciphertext message bodies are persist
 ---
 ### Changelog
 - v1.0 — initial spec.
+- v1.1 — §13: added `sniffDenied` (executables/archives/shebang always denied) and stricter text control-char rule.
